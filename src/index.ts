@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-
-import * as admin from 'firebase-admin';
+import { initializeApp, cert } from 'firebase-admin/app';
 import * as args from 'commander';
 import * as _ from 'lodash';
 
 // Firebase App Initialization
 var serviceAccount = require("../credentials.json");
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+initializeApp({
+    credential: cert(serviceAccount),
 });
 
 import * as importCollection from './importCollection';

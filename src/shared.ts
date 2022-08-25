@@ -1,11 +1,16 @@
-import * as admin from 'firebase-admin';
+
+
+
 import * as _ from 'lodash';
+import { Firestore } from '@google-cloud/firestore';
+import { GeoPoint, getFirestore } from 'firebase-admin/firestore';
 import { DocumentReference } from '@google-cloud/firestore';
 import { isNull } from 'util';
 
-const db = admin.firestore();
-
-
+const firestore = new Firestore({
+    keyFilename: 'credentials.json',
+});
+const db = getFirestore().settings({ timestampsInSnapshots: true });
 
 const toType = function(obj) {
     return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
@@ -71,11 +76,11 @@ class FieldHandler {
 
 class GeoPointFH extends FieldHandler {
     isDecodeType = (key: string, val, doc)  => {
-        return (val instanceof admin.firestore.GeoPoint);
+        return (val instanceof GeoPoint);
     };
     encodeFn = (key: string, val, doc) => {
         const {data} = val;
-        return new admin.firestore.GeoPoint(data._latitude, data._longitude);
+        return new GeoPoint(data._latitude, data._longitude);
     }
 }
 
@@ -120,14 +125,14 @@ class NumberFH extends FieldHandler {
 
 class ReferenceFH extends FieldHandler {
     isDecodeType = (key: string, val, doc)  => {
-        return (val instanceof admin.firestore.DocumentReference);
+        return (val instanceof DocumentReference);
     };
     decodeFn = (key: string, val:DocumentReference, doc) => {
         return val.path;
     };
     encodeFn = (key: string, val, doc) => {
         const {data} = val;
-        return db.doc(data);
+        return doc(data);
     }
 }
 

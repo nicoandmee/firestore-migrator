@@ -1,4 +1,4 @@
-import * as admin from 'firebase-admin';
+import { Firestore } from '@google-cloud/firestore';
 import * as fs from 'fs-extra';
 import * as _ from 'lodash';
 import * as XLSX from 'xlsx';
@@ -7,7 +7,10 @@ import * as dot from 'dot-object';
 
 import { sortByKeysFn, decodeDoc } from '../shared';
 
-const db = admin.firestore();
+const firestore = new Firestore({
+    keyFilename: 'credentials.json',
+});
+
 let args;
 
 export const execute = async (file: string, collectionPaths: string[], options) => {    
@@ -17,7 +20,7 @@ export const execute = async (file: string, collectionPaths: string[], options) 
     // If no collection arguments, select all root collections
     if (collectionPaths.length === 0) {
         console.log('Selecting root collections...');
-        collectionPaths = await db.getCollections().then(colls => colls.map(coll => coll.path));    
+        collectionPaths = await firestore.listCollections().then(colls => colls.map(coll => coll.path));    
     }
     
     console.log('Getting selected collections...');
@@ -74,7 +77,7 @@ function getCollections(paths): Promise<any> {
 function getCollection(path): Promise<any> {
     let collection = {};
 
-    return db.collection(path).get().then( async snaps => {
+    return firestore.collection(path).get().then( async snaps => {
         // try {
 
             if (snaps.size === 0) {
@@ -92,7 +95,7 @@ function getCollection(path): Promise<any> {
 
                 // process sub-collections
                 if (args.subcolls) {
-                    const subCollPaths = await snap.ref.getCollections().then(colls => colls.map(coll => coll.path));
+                    const subCollPaths = await snap.ref.listCollections().then(colls => colls.map(coll => coll.path));
                     if (subCollPaths.length) {
                         const subCollections = await getCollections(subCollPaths);
                         _.assign(doc[snap.id], subCollections);

@@ -1,4 +1,4 @@
-import * as admin from 'firebase-admin';
+import { Firestore } from '@google-cloud/firestore';
 import * as fs from 'fs-extra';
 import * as _ from 'lodash';
 import * as XLSX from 'xlsx';
@@ -6,9 +6,11 @@ import * as dot from 'dot-object';
 
 import { encodeDoc, cleanCollectionPath, isCollectionPath, isDocumentPath } from '../shared';
 
+const firestore = new Firestore({
+    keyFilename: 'credentials.json',
+});
+let batch = firestore.batch();
 
-const db = admin.firestore();
-let batch = db.batch();
 let batchCount = 0;
 let totalSetCount = 0;
 let totalDelCount = 0;
@@ -114,7 +116,7 @@ async function batchCommit(recycle:boolean = true) {
 
     // Get a new batch
     if (recycle) {
-        batch = db.batch();
+        batch = firestore.batch();
         batchCount = 0;
     }
 }
@@ -129,9 +131,9 @@ function writeCollections(data): Promise<any> {
     return Promise.all(promises);
 }
 
-function writeCollection(data:JSON, path: string): Promise<any> {
+function writeCollection(data:JSON, path: string): Promise<void> {
     return new Promise(async (resolve, reject) => {        
-        const colRef = db.collection(path);
+        const colRef = firestore.collection(path);
 
         if (args.truncate) {
             await truncateCollection(colRef);
@@ -164,7 +166,7 @@ function writeCollection(data:JSON, path: string): Promise<any> {
             encodeDoc(item);
             
             // set document data into path/id
-            const docRef = colRef.doc(id);
+            const docRef = colRef.doc();
             await batchSet(docRef, item, { merge: !!(args.merge) });
 
         }
@@ -186,7 +188,7 @@ async function truncateCollection(colRef: FirebaseFirestore.CollectionReference)
     await colRef.get().then(async (snap) => {
         for (let doc of snap.docs) {
             // recurse sub-collections
-            const subCollPaths = await doc.ref.getCollections();
+            const subCollPaths = await doc.ref.listCollections();
             for (let subColRef of subCollPaths) {
                 await truncateCollection(subColRef);
             }
